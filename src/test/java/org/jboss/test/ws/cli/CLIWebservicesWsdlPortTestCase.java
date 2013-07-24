@@ -26,19 +26,13 @@ import static org.junit.Assert.*;
 
 import java.net.URL;
 
-import org.jboss.arquillian.container.test.api.Deployment;
-import org.jboss.arquillian.container.test.api.RunAsClient;
-import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.jboss.test.ws.BaseDeployment.WarDeployment;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-@RunWith(Arquillian.class)
-public final class CLIWebservicesWsdlPortArquillianTestCase
+public final class CLIWebservicesWsdlPortTestCase
 {
    private static final int WSDL_PORT = 8080;
    private static final int WSDL_PORT_CHANGED = 8084;
@@ -57,10 +51,6 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
    private URL wsdlURL2;
    private URL wsdlURLChanged2;
 
-   @Deployment(testable = false)
-   static WebArchive getDeployment() {
-      return createWarDeployment(WAR_NAME).createArchive();
-   }
 
    private static WarDeployment createWarDeployment(String name)
    {
@@ -82,20 +72,43 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
       wsdlURLChanged = new URL(serviceURLChanged + "?wsdl");
       wsdlURL2 = new URL(serviceURL2 + "?wsdl");
       wsdlURLChanged2 = new URL(serviceURLChanged2 + "?wsdl");
-      executeAssertedCLICommand("/subsystem=webservices/:undefine-attribute(name=wsdl-port)");
    }
 
    @After
    public void after() throws Exception {
-      executeCLICommandQuietly("/subsystem=webservices/:undefine-attribute(name=wsdl-port)");
-      //executeCLICommandQuietly("/:reload");
-      undeployQuietly(WAR_NAME2);
+      @SuppressWarnings("unused")
+      String result = null;
+      result = executeCLICommandQuietly("/subsystem=webservices/:undefine-attribute(name=wsdl-port)");
+      //result = executeCLICommandQuietly("/:reload");
+      //result = undeployQuietly(WAR_NAME);
+      //result = undeployQuietly(WAR_NAME2);
    }
 
-   @RunAsClient
+   @Test
+   public void testWarDeployUndeployDeploy() throws Exception
+   {
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+   }
+
+   @Test
+   public void testWarDeployUndeployDeployWithReload() throws Exception
+   {
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      executeAssertedCLICommand("/:reload");
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+   }
+
+
+
    @Test
    public void testDefaultWsdlPort() throws Exception
    {
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
       String wsdl = readUrlToString(wsdlURL);
 
       assertCorrectWsdlReturned(wsdl);
@@ -110,10 +123,10 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
       assertTrue(wsdl.contains("sayHelloResponse"));
    }
 
-   @RunAsClient
    @Test
    public void testOriginalWsdlPortIsAccessibleAfterChange() throws Exception
    {
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
       String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
 
       assertChangeWsdlPortCommandResult(result);
@@ -128,15 +141,14 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
 
    }
 
-
-   @RunAsClient
    @Test
    public void testOriginalWsdlPortIsAccessibleAfterChangeForAnotherDeployment() throws Exception
    {
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
       String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
       assertChangeWsdlPortCommandResult(result);
 
-      result = executeAssertedCLIdeploy(createWarDeployment(WAR_NAME2).createArchive());
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME2).createArchive());
 
       String wsdl = readUrlToString(wsdlURL2);
 
@@ -145,19 +157,17 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
 
       assertUrlIsNotAccessible(wsdlURLChanged2);
       assertServiceIsNotAvailable(serviceURLChanged2);
-
    }
 
-   @RunAsClient
    @Test
    public void testOriginalWsdlPortIsAccessibleAfterChangeForRedeployment() throws Exception
    {
 
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
       String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
       assertChangeWsdlPortCommandResult(result);
 
-      result = executeCLICommand("/deployment=" + WAR_NAME + "/:redeploy");
-      assertSuccessfulCLIResult(result);
+      executeAssertedCLICommand("/deployment=" + WAR_NAME + "/:redeploy");
 
 
       String wsdl = readUrlToString(wsdlURL);
@@ -172,9 +182,8 @@ public final class CLIWebservicesWsdlPortArquillianTestCase
 
    private void assertChangeWsdlPortCommandResult(String result)
    {
-      assertSuccessfulCLIResult(result);
-      assertCLIResultIsReloadRequired(result);
       assertCLIOperationRequiesReload(result);
+      assertCLIResultIsReloadRequired(result);
    }
 
 

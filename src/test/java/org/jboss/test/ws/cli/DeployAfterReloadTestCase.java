@@ -22,35 +22,18 @@
 package org.jboss.test.ws.cli;
 
 import static org.jboss.test.ws.cli.CLITestUtils.*;
-import static org.junit.Assert.*;
 
-import java.net.URL;
-
-import org.jboss.arquillian.container.test.api.Deployment;
-import org.jboss.arquillian.container.test.api.RunAsClient;
-import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.jboss.test.ws.BaseDeployment.WarDeployment;
-import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-@RunWith(Arquillian.class)
-public final class WebServiceArquillianTestCase
+public final class DeployAfterReloadTestCase
 {
-   private static final int WSDL_PORT = 8080;
 
-   private static final String NAME = "WebServiceTestCase";
+   private static final String NAME = "CLIWebservicesWsdlPortTestCase";
    private static final String WAR_NAME = NAME + WAR_EXTENSTION;
-   private final String serviceURL = "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + WSDL_PORT + "/" + NAME + "/AnnotatedSecurityService";
-   private URL wsdlURL;
 
 
-   @Deployment(testable = false)
-   static WebArchive getDeployment() {
-      return createWarDeployment(WAR_NAME).createArchive();
-   }
 
    private static WarDeployment createWarDeployment(String name)
    {
@@ -66,25 +49,26 @@ public final class WebServiceArquillianTestCase
       } };
    }
 
-   @Before
-   public void before() throws Exception {
-      wsdlURL = new URL(serviceURL + "?wsdl");
-   }
-
-   @RunAsClient
    @Test
-   public void testDefaultWsdlPort() throws Exception
+   public void testWarDeployUndeployDeploy() throws Exception
    {
-      String wsdl = CLITestUtils.readUrlToString(wsdlURL);
-
-      assertCorrectWsdlReturned(wsdl);
-      assertServiceIsFunctional(serviceURL);
-
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
    }
 
-   private void assertCorrectWsdlReturned(String wsdl)
+   @Test
+   public void testWarDeployUndeployDeployWithReload() throws Exception
    {
-      assertTrue(wsdl.contains("sayHelloResponse"));
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      executeAssertedCLICommand("reload");
+      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      assertSuccessfulCLIResult(undeploy(WAR_NAME));
    }
+
+
+
 
 }

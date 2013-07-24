@@ -15,6 +15,7 @@ import javax.xml.ws.Service;
 import javax.xml.ws.WebServiceException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.jboss.as.cli.CliInitializationException;
 import org.jboss.as.cli.CommandContext;
@@ -27,6 +28,10 @@ import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 
 public class CLITestUtils
 {
+
+   public static final String WAR_EXTENSTION = ".war";
+   public static final String JAR_EXTENSTION = ".jar";
+   public static final String EAR_EXTENSTION = ".ear";
 
    public static void assertServiceIsNotAvailable(String serviceURL) throws MalformedURLException
    {
@@ -119,9 +124,19 @@ public class CLITestUtils
 
    public static String executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
    {
-      File file = new File(FileUtils.getTempDirectory(), archive.getName());
+      String archiveName = archive.getName();
+      assertArchiveNameContainsExtension(archiveName);
+      File file = new File(FileUtils.getTempDirectory(), archiveName);
       archive.as(ZipExporter.class).exportTo(file, true);
       return executeCLICommand("deploy " + file.getAbsolutePath());
+   }
+
+   private static void assertArchiveNameContainsExtension(String archiveName)
+   {
+      String extension = "." + FilenameUtils.getExtension(archiveName);
+      if (!(WAR_EXTENSTION.equals(extension) || JAR_EXTENSTION.equals(extension) || EAR_EXTENSTION.equals(extension)))
+         throw new IllegalArgumentException("Archive " + archiveName + " extension have to be either " + JAR_EXTENSTION + " or " + WAR_EXTENSTION + " or " + EAR_EXTENSTION);
+
    }
 
    public static String executeCLICommandQuietly(String command) throws IOException, CommandLineException
@@ -135,11 +150,14 @@ public class CLITestUtils
       return null;
    }
 
-   public static String removeDeploymentQuietly(String deploymentName)
+   public static String undeploy(String deploymentName) throws IOException, CommandLineException {
+      return executeCLICommand("undeploy " + deploymentName);
+   }
+
+   public static String undeployQuietly(String deploymentName)
    {
       try {
-         return executeCLICommand("/deployment=" + deploymentName + "/:undeploy");
-//         return executeCLICommand("/deployment=" + deploymentName + "/:remove");
+         return undeploy(deploymentName);
       } catch (Exception e) {
          // ignore
          // FIXME debug log

@@ -15,6 +15,15 @@
     <jboss720.version>7.2.1.Final-redhat-4</jboss720.version>
     <jbossws-common-tools.version>1.0.2-SNAPSHOT</jbossws-common-tools.version>
     <commons-io.version>2.0.1</commons-io.version>
+
+<!--
+    <surefire.security.args>-Djava.security.manager -Djava.security.policy=src/test/etc/tst.policy</surefire.security.args>
+ -->
+    <surefire.security.args></surefire.security.args>
+    <surefire.memory.args>-Xmx768m -XX:MaxPermSize=450m</surefire.memory.args>
+    <surefire.jdwp.args>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005</surefire.jdwp.args>
+    <surefire.management.args>-Dcom.sun.management.jmxremote</surefire.management.args>
+    <log4j.output.dir>${project.build.directory}</log4j.output.dir>
   </properties>
 
   <dependencies>
@@ -161,6 +170,119 @@
 				</dependency>
 			</dependencies>
 		</profile>
+
+    <!--
+    Name:  debug
+    Descr: Enable remote debuging for tests
+    -->
+    <profile>
+      <id>debug</id>
+      <activation>
+        <property>
+          <name>debug</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.jvm.args>${surefire.security.args} ${surefire.memory.args} ${surefire.jdwp.args}</surefire.jvm.args>
+      </properties>
+    </profile>
+    <profile>
+      <id>no-debug</id>
+      <activation>
+        <property>
+          <name>!debug</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.jvm.args>${surefire.security.args} ${surefire.memory.args}</surefire.jvm.args>
+      </properties>
+    </profile>
+    <!--
+    Name:  management
+    Descr: Enable remote jmx management (useful to attach JConsole, for instance)
+    -->
+    <profile>
+      <id>management</id>
+      <activation>
+        <property>
+          <name>management</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.jvm.management.args>${surefire.management.args}</surefire.jvm.management.args>
+      </properties>
+    </profile>
+    <profile>
+      <id>no-management</id>
+      <activation>
+        <property>
+          <name>!management</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.jvm.management.args> </surefire.jvm.management.args>
+      </properties>
+    </profile>
+
+    <!--
+    Name:  hudson
+    Descr: Ignore test failures on hudson
+    -->
+    <profile>
+      <id>hudson</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <testFailureIgnore>true</testFailureIgnore>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!--
+    Name:  no-jboss-bind-address
+    Descr: Set the default jboss.bind.address
+
+    command line cannot overwrite pom properties
+    http://jira.codehaus.org/browse/MNG-3546
+    -->
+    <profile>
+      <id>no-jboss-bind-address</id>
+      <activation>
+        <property>
+          <name>!jboss.bind.address</name>
+        </property>
+      </activation>
+      <properties>
+        <jboss.bind.address>localhost</jboss.bind.address>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>default-mgmt-security</id>
+      <activation>
+        <property>
+          <name>!jbossws.deployer.authentication.username</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.default-mgmt-serurity.args>-Djbossws.deployer.authentication.username=admin -Djbossws.deployer.authentication.password=admin</surefire.default-mgmt-serurity.args>
+      </properties>
+    </profile>
+    <profile>
+      <id>custom-mgmt-security</id>
+      <activation>
+        <property>
+          <name>jbossws.deployer.authentication.username</name>
+        </property>
+      </activation>
+      <properties>
+        <surefire.default-mgmt-serurity.args> </surefire.default-mgmt-serurity.args>
+      </properties>
+    </profile>
+
 		<profile>
       <id>endorsed-libs</id>
       <activation>
@@ -209,6 +331,41 @@
                 <!-- tell compiler to use endorsed dir -->
                 <endorseddirs>${endorsed.dir}</endorseddirs>
               </compilerArguments>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemProperties>
+                <property>
+                  <name>jboss.bind.address</name>
+                  <value>${jboss.bind.address}</value>
+                </property>
+                <property>
+                  <name>java.protocol.handler.pkgs</name>
+                  <value>org.jboss.net.protocol|org.jboss.vfs.protocol|org.jboss.virtual.protocol</value>
+                </property>
+                <property>
+                  <name>org.jboss.security.ignoreHttpsHost</name>
+                  <value>true</value>
+                </property>
+                <property>
+                  <name>jboss.home</name>
+                  <value>${jboss.home}</value>
+                </property>
+                <property>
+                  <name>jbossws.integration.target</name>
+                  <value>${jbossws.integration.target}</value>
+                </property>
+                <property>
+                  <name>log4j.output.dir</name>
+                  <value>${log4j.output.dir}</value>
+                </property>
+              </systemProperties>
+              <excludes>
+                 <exclude>org/jboss/test/ws/cli/CLIWebservicesWsdlPortArquillianTestCase.java</exclude>
+              </excludes>
+              <argLine>${surefire.jvm.args} ${surefire.jvm.management.args} ${surefire.default-mgmt-serurity.args} -Djava.endorsed.dirs=${endorsed.dir} -DallowConnectingToRunningServer=true</argLine>
             </configuration>
           </plugin>
         </plugins>
