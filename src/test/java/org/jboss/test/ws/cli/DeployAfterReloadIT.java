@@ -21,18 +21,17 @@
  */
 package org.jboss.test.ws.cli;
 
-import static org.jboss.test.ws.cli.CLITestUtils.*;
-
 import org.jboss.shrinkwrap.api.asset.StringAsset;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.jboss.test.ws.BaseDeployment.WarDeployment;
+import org.junit.After;
 import org.junit.Test;
 
-public final class DeployAfterReloadTestCase
+public final class DeployAfterReloadIT extends CLITestUtils
 {
 
    private static final String NAME = "CLIWebservicesWsdlPortTestCase";
    private static final String WAR_NAME = NAME + WAR_EXTENSTION;
-
 
 
    private static WarDeployment createWarDeployment(String name)
@@ -49,23 +48,31 @@ public final class DeployAfterReloadTestCase
       } };
    }
 
+   @After
+   public void after() throws Exception {
+      undeployQuietly(WAR_NAME);
+   }
+
    @Test
    public void testWarDeployUndeployDeploy() throws Exception
    {
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      assertSuccessfulCLIResult(undeploy(WAR_NAME));
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      WebArchive war = createWarDeployment(WAR_NAME).createArchive();
+      executeAssertedCLIdeploy(war);
+      assertSuccessfulCLIResult(undeploy(war.getName()));
+      executeAssertedCLIdeploy(war);
+      assertSuccessfulCLIResult(undeploy(war.getName()));
    }
 
    @Test
    public void testWarDeployUndeployDeployWithReload() throws Exception
    {
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      assertSuccessfulCLIResult(undeploy(WAR_NAME));
-      executeAssertedCLICommand("reload");
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      assertSuccessfulCLIResult(undeploy(WAR_NAME));
+      WebArchive war = createWarDeployment(WAR_NAME).createArchive();
+      executeAssertedCLIdeploy(war);
+      assertSuccessfulCLIResult(undeploy(war.getName()));
+      restartServer(); //remove when https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved
+      executeAssertedCLIReload();
+      executeAssertedCLIdeploy(war);
+      assertSuccessfulCLIResult(undeploy(war.getName()));
    }
 
 

@@ -1,30 +1,42 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-  <name>JBoss Web Services - CLI Management Tests</name>
-  <groupId>org.jboss.ws</groupId>
-  <artifactId>jbossws-cli-tests</artifactId>
-  <version>1.0.0</version>
-  <packaging>jar</packaging>
+	<name>JBoss Web Services - CLI Management Tests</name>
+	<groupId>org.jboss.ws</groupId>
+	<artifactId>jbossws-cli-tests</artifactId>
+	<version>1.0.0</version>
+	<packaging>jar</packaging>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jbossws-cxf.version>4.1.4.Final-redhat-1</jbossws-cxf.version>
-    <junit.version>4.8.2</junit.version>
-    <jboss720.version>7.2.1.Final-redhat-4</jboss720.version>
-    <jbossws-common-tools.version>1.0.2-SNAPSHOT</jbossws-common-tools.version>
-    <commons-io.version>2.0.1</commons-io.version>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-<!--
-    <surefire.security.args>-Djava.security.manager -Djava.security.policy=src/test/etc/tst.policy</surefire.security.args>
- -->
-    <surefire.security.args></surefire.security.args>
-    <surefire.memory.args>-Xmx768m -XX:MaxPermSize=450m</surefire.memory.args>
-    <surefire.jdwp.args>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005</surefire.jdwp.args>
-    <surefire.management.args>-Dcom.sun.management.jmxremote</surefire.management.args>
-    <log4j.output.dir>${project.build.directory}</log4j.output.dir>
-  </properties>
+		<jbossws-cxf.version>4.1.4.Final-redhat-1</jbossws-cxf.version>
+		<junit.version>4.8.2</junit.version>
+		<jboss720.version>7.2.1.Final-redhat-4</jboss720.version>
+		<jboss.home>${project.build.directory}/jboss-eap-6.1</jboss.home>
+		<jboss.java.home>${java.home}</jboss.java.home>
+		<jboss.jvm.args></jboss.jvm.args>
+		<!--
+		-XX:+HeapDumpOnOutOfMemoryError -Xms${jboss.heap.size} -Xmx${jboss.heap.size} -XX:PermSize=${jboss.perm.size} -XX:MaxPermSize=${jboss.perm.size.max} ${server.gc} -Djava.net.preferIPv4Stack=true ${server.java.opts}
+		 -->
+
+
+		<jbossws-common-tools.version>1.0.2-SNAPSHOT</jbossws-common-tools.version>
+		<commons-io.version>2.0.1</commons-io.version>
+		<shrinkwrap.version>1.1.3</shrinkwrap.version>
+
+		<surefire.version>2.15</surefire.version>
+		<surefire.security.args></surefire.security.args>
+		<surefire.memory.args>-Xmx768m -XX:MaxPermSize=450m</surefire.memory.args>
+		<surefire.jdwp.args>-Xdebug -Xnoagent -Djava.compiler=NONE
+			-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005</surefire.jdwp.args>
+		<surefire.management.args>-Dcom.sun.management.jmxremote</surefire.management.args>
+
+		<log4j.output.dir>${project.build.directory}</log4j.output.dir>
+		<jboss.overwrite-existing>false</jboss.overwrite-existing>
+	</properties>
 
   <dependencies>
     <dependency>
@@ -69,44 +81,98 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
-		<dependency>
-			<groupId>org.jboss.arquillian.junit</groupId>
-			<artifactId>arquillian-junit-container</artifactId>
-			<scope>test</scope>
+    <dependency>
+			<groupId>org.jboss.shrinkwrap</groupId>
+			<artifactId>shrinkwrap-depchain</artifactId>
+			<version>${shrinkwrap.version}</version>
+			<type>pom</type>
 		</dependency>
   </dependencies>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.jboss.arquillian</groupId>
-				<artifactId>arquillian-bom</artifactId>
-				<version>1.1.0.Final</version>
-				<scope>import</scope>
-				<type>pom</type>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 
-  <!-- Build -->
-  <build>
-    <testResources>
-      <testResource>
-        <directory>src/test/resources</directory>
-      </testResource>
-      <testResource>
-        <directory>src/test/filtered-resources</directory>
-        <filtering>true</filtering>
-      </testResource>
-    </testResources>
-  </build>
+	<!-- Build -->
+	<build>
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+			</testResource>
+			<testResource>
+				<directory>src/test/filtered-resources</directory>
+				<filtering>true</filtering>
+			</testResource>
+		</testResources>
+    <plugins>
+      <!--
+	    <plugin>
+	      <groupId>org.apache.maven.plugins</groupId>
+	      <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
+	      <configuration>
+	        <excludes>
+	          <exclude>**/*IT.java</exclude>
+	           <exclude>org/jboss/test/ws/cli/CLIWebservicesWsdlPortArquillianTestCase.java</exclude>
+						 <exclude>org/jboss/test/ws/cli/WebServiceArquillianTestCase.java</exclude>
+	        </excludes>
+	      </configuration>
+	    </plugin>
+	    -->
+	    <plugin>
+	      <groupId>org.apache.maven.plugins</groupId>
+		    <artifactId>maven-failsafe-plugin</artifactId>
+		    <version>2.15</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+			      <configuration>
+			        <excludes>
+			          <exclude>none</exclude>
+			        </excludes>
+			        <includes>
+			          <include>**/*IT.java</include>
+			        </includes>
+			        <argLine>${surefire.jvm.args} ${surefire.jvm.management.args} -Djava.endorsed.dirs=${endorsed.dir} -DallowConnectingToRunningServer=true</argLine>
+			        <systemProperties>
+			          <property>
+			            <name>jboss.bind.address</name>
+			            <value>${jboss.bind.address}</value>
+			          </property>
+			          <property>
+			            <name>java.protocol.handler.pkgs</name>
+			            <value>org.jboss.net.protocol|org.jboss.vfs.protocol|org.jboss.virtual.protocol</value>
+			          </property>
+			          <property>
+			            <name>org.jboss.security.ignoreHttpsHost</name>
+			            <value>true</value>
+			          </property>
+			          <property>
+			            <name>jboss.home</name>
+			            <value>${jboss.home}</value>
+			          </property>
+			          <property>
+			            <name>jbossws.integration.target</name>
+			            <value>${jbossws.integration.target}</value>
+			          </property>
+			          <property>
+			            <name>log4j.output.dir</name>
+			            <value>${log4j.output.dir}</value>
+			          </property>
+			        </systemProperties>
+			      </configuration>
+          </execution>
+        </executions>
+	    </plugin>
+    </plugins>
+ 	</build>
   <!-- Profiles -->
   <profiles>
 
 		<profile>
-			<id>arquillian-wildfly-managed</id>
+			<id>wildfly800</id>
       <activation>
         <property>
-          <name>arquillian-wildfly-managed</name>
+          <name>wildfly800</name>
         </property>
       </activation>
 			<dependencies>
@@ -116,17 +182,6 @@
 					<version>1.0.0.Final</version>
 					<type>pom</type>
 					<scope>provided</scope>
-				</dependency>
-				<dependency>
-					<groupId>org.wildfly</groupId>
-					<artifactId>wildfly-arquillian-container-managed</artifactId>
-					<version>${wildfly800.version}</version>
-					<scope>test</scope>
-				</dependency>
-				<dependency>
-					<groupId>org.jboss.arquillian.protocol</groupId>
-					<artifactId>arquillian-protocol-servlet</artifactId>
-					<scope>test</scope>
 				</dependency>
 				<dependency>
 					<groupId>org.wildfly</groupId>
@@ -137,10 +192,10 @@
 			</dependencies>
 		</profile>
 		<profile>
-			<id>arquillian-jboss720-managed</id>
+			<id>jboss720</id>
       <activation>
         <property>
-          <name>!arquillian-jboss720-managed</name>
+          <name>!jboss720</name>
         </property>
       </activation>
 			<dependencies>
@@ -153,23 +208,186 @@
 				</dependency>
 				<dependency>
 					<groupId>org.jboss.as</groupId>
-					<artifactId>jboss-as-arquillian-container-managed</artifactId>
-					<version>7.2.0.Final</version>
-					<scope>test</scope>
-				</dependency>
-				<dependency>
-					<groupId>org.jboss.arquillian.protocol</groupId>
-					<artifactId>arquillian-protocol-servlet</artifactId>
-					<scope>test</scope>
-				</dependency>
-				<dependency>
-					<groupId>org.jboss.as</groupId>
 					<artifactId>jboss-as-cli</artifactId>
 					<version>${jboss720.version}</version>
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
-		</profile>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>2.3</version>
+            <executions>
+              <execution>
+					      <id>unpack</id>
+					      <phase>pre-integration-test</phase>
+					      <goals>
+					        <goal>unpack</goal>
+					      </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+					            <groupId>org.jboss.as</groupId>
+					            <artifactId>jboss-as-dist</artifactId>
+					            <version>${jboss720.version}</version>
+					            <type>zip</type>
+					            <overWrite>${jboss.overwrite-existing}</overWrite>
+					            <outputDirectory>${project.build.directory}</outputDirectory>
+                    </artifactItem>
+                  </artifactItems>
+                  <silent>false</silent>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+ 		</profile>
+
+		<profile>
+			<id>jboss720-start</id>
+      <activation>
+        <property>
+          <name>!jboss720-start</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+        <!--
+					<plugin>
+						<groupId>org.jboss.as.plugins</groupId>
+						<artifactId>jboss-as-maven-plugin</artifactId>
+						<version>7.4.Final</version>
+						<executions>
+							<execution>
+								<id>start-as</id>
+								<phase>pre-integration-test</phase>
+								<goals>
+									<goal>start</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+         -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<version>1.7</version>
+						<executions>
+							<execution>
+								<id>start-as</id>
+								<phase>pre-integration-test</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+ 									<tasks>
+ 									<!--
+ 										<echo>Start AS ${jboss.home} on ${os.name} java ${jboss.java.home}</echo>
+						        <available file="${jboss.home}/jboss-modules.jar" property="jboss.run.jar.exists"/>
+						        <fail unless="jboss.run.jar.exists" message="Unable to find ${jboss.home}/jboss-modules.jar"/>
+										<java jvm="${jboss.java.home}/bin/java"
+						              dir="${jboss.home}" jar="${jboss.home}/jboss-modules.jar"
+						               fork="true" spawn="true">
+						            <arg line="-mp ${jboss.home}/modules -jaxpmodule javax.xml.jaxp-provider org.jboss.as.standalone -Djava.util.logging.manager=org.jboss.logmanager -Djboss.home.dir=${jboss.home}"/>
+												<jvmarg line="${jboss.jvm.args}"/>
+						            <sysproperty key="org.jboss.boot.log.file" value="${jboss.home}/standalone/log/boot.log"/>
+						            <sysproperty key="logging.configuration" value="file:${jboss.home}/standalone/configuration/logging.properties"/>
+						            <sysproperty key="jboss.server.home.url" value="file://${jboss.home}"/>
+						            <sysproperty key="jboss.home.dir" value="${jboss.home}"/>
+						            <classpath>
+						                <pathelement path="${jboss.home}/jboss-modules.jar"/>
+						            </classpath>
+						        </java>
+ 									 -->
+		                <exec
+		                	os="Linux"
+		                  executable="/bin/sh"
+		                  dir="${jboss.home}"
+		                  failonerror="true">
+											<arg value="-c"/>
+											<arg value="chmod u+x bin/standalone.sh"/>
+		                </exec>
+		                <exec
+		                	os="Linux"
+		                	spawn="true"
+		                  executable="/bin/sh"
+		                  dir="${jboss.home}"
+		                  >
+											<arg value="-c"/>
+											<arg value="bin/standalone.sh"/>
+		                </exec>
+ 										<echo>Waiting 5 seconds for server to start</echo>
+						        <sleep seconds="5"/>
+ 										<!--
+		                <exec
+		                	os="Linux"
+		                  executable="${jboss.home}/bin/standalone.sh"
+		                  failonerror="true"
+		                  >
+		                  <env key="LAUNCH_JBOSS_IN_BACKGROUND" value="1"/>
+		                  dir="${jboss.home}"
+		                </exec>
+ 										 -->
+ 									</tasks>
+								</configuration>
+							</execution>
+						</executions>
+          </plugin>
+        </plugins>
+      </build>
+ 		</profile>
+		<profile>
+			<id>jboss720-stop</id>
+      <activation>
+        <property>
+          <name>!jboss720-stop</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<version>1.7</version>
+						<executions>
+							<execution>
+								<id>stop-as</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+ 									<tasks>
+		                <exec
+		                	os="Linux"
+		                  executable="/bin/sh"
+		                  dir="${jboss.home}"
+		                  failonerror="true">
+											<arg value="-c"/>
+											<arg value="chmod u+x bin/jboss-cli.sh"/>
+		                </exec>
+		                <exec
+		                	os="Linux"
+		                	spawn="true"
+		                  executable="/bin/sh"
+		                  dir="${jboss.home}"
+		                  >
+											<arg value="-c"/>
+											<arg value="bin/jboss-cli.sh -c shutdown"/>
+		                </exec>
+ 										<echo>Waiting 5 seconds for server to shutdown</echo>
+						        <sleep seconds="5"/>
+ 									</tasks>
+								</configuration>
+							</execution>
+						</executions>
+          </plugin>
+        </plugins>
+      </build>
+ 		</profile>
 
     <!--
     Name:  debug
@@ -233,7 +451,9 @@
       <build>
         <plugins>
           <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
             <configuration>
               <testFailureIgnore>true</testFailureIgnore>
             </configuration>
@@ -260,29 +480,6 @@
       </properties>
     </profile>
 
-    <profile>
-      <id>default-mgmt-security</id>
-      <activation>
-        <property>
-          <name>!jbossws.deployer.authentication.username</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.default-mgmt-serurity.args>-Djbossws.deployer.authentication.username=admin -Djbossws.deployer.authentication.password=admin</surefire.default-mgmt-serurity.args>
-      </properties>
-    </profile>
-    <profile>
-      <id>custom-mgmt-security</id>
-      <activation>
-        <property>
-          <name>jbossws.deployer.authentication.username</name>
-        </property>
-      </activation>
-      <properties>
-        <surefire.default-mgmt-serurity.args> </surefire.default-mgmt-serurity.args>
-      </properties>
-    </profile>
-
 		<profile>
       <id>endorsed-libs</id>
       <activation>
@@ -301,21 +498,22 @@
             <version>2.3</version>
             <executions>
               <execution>
-                <phase>pre-compile</phase>
+                <phase>validate</phase>
                 <goals>
                   <goal>copy</goal>
                 </goals>
                 <configuration>
-                  <outputDirectory>${endorsed.dir}</outputDirectory>
-                  <silent>true</silent>
                   <artifactItems>
                     <artifactItem>
-                      <groupId>org.jboss.ws.cxf</groupId>
-                      <artifactId>jbossws-cxf-factories</artifactId>
-                      <version>${jbossws-cxf.version}</version>
-                      <type>jar</type>
+										  <groupId>org.jboss.ws.cxf</groupId>
+				              <artifactId>jbossws-cxf-factories</artifactId>
+				              <version>${jbossws-cxf.version}</version>
+										  <type>jar</type>
                     </artifactItem>
                   </artifactItems>
+						      <overWrite>true</overWrite>
+                  <outputDirectory>${endorsed.dir}</outputDirectory>
+                  <silent>false</silent>
                 </configuration>
               </execution>
             </executions>
@@ -331,41 +529,6 @@
                 <!-- tell compiler to use endorsed dir -->
                 <endorseddirs>${endorsed.dir}</endorseddirs>
               </compilerArguments>
-            </configuration>
-          </plugin>
-          <plugin>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <systemProperties>
-                <property>
-                  <name>jboss.bind.address</name>
-                  <value>${jboss.bind.address}</value>
-                </property>
-                <property>
-                  <name>java.protocol.handler.pkgs</name>
-                  <value>org.jboss.net.protocol|org.jboss.vfs.protocol|org.jboss.virtual.protocol</value>
-                </property>
-                <property>
-                  <name>org.jboss.security.ignoreHttpsHost</name>
-                  <value>true</value>
-                </property>
-                <property>
-                  <name>jboss.home</name>
-                  <value>${jboss.home}</value>
-                </property>
-                <property>
-                  <name>jbossws.integration.target</name>
-                  <value>${jbossws.integration.target}</value>
-                </property>
-                <property>
-                  <name>log4j.output.dir</name>
-                  <value>${log4j.output.dir}</value>
-                </property>
-              </systemProperties>
-              <excludes>
-                 <exclude>org/jboss/test/ws/cli/CLIWebservicesWsdlPortArquillianTestCase.java</exclude>
-              </excludes>
-              <argLine>${surefire.jvm.args} ${surefire.jvm.management.args} ${surefire.default-mgmt-serurity.args} -Djava.endorsed.dirs=${endorsed.dir} -DallowConnectingToRunningServer=true</argLine>
             </configuration>
           </plugin>
         </plugins>

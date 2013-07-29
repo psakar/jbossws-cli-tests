@@ -32,8 +32,18 @@ public class CLITestUtils
    public static final String WAR_EXTENSTION = ".war";
    public static final String JAR_EXTENSTION = ".jar";
    public static final String EAR_EXTENSTION = ".ear";
+   private final int shutdownWaitMillis;
+   private final int reloadWaitMillis;
+   private final int startupWaitMillis;
 
-   public static void assertServiceIsNotAvailable(String serviceURL) throws MalformedURLException
+   public CLITestUtils()
+   {
+      shutdownWaitMillis = 4000;
+      reloadWaitMillis = 3000;
+      startupWaitMillis = 4000;
+   }
+
+   public void assertServiceIsNotAvailable(String serviceURL) throws MalformedURLException
    {
       QName serviceName = new QName("http://www.jboss.org/jbossws/ws-extensions/wssecuritypolicy", "AnnotatedSecurityService");
       URL wsdlURL = new URL(serviceURL + "?wsdl");
@@ -47,7 +57,7 @@ public class CLITestUtils
       }
    }
 
-   public static void assertServiceIsFunctional(String serviceURL) throws MalformedURLException
+   public void assertServiceIsFunctional(String serviceURL) throws MalformedURLException
    {
       QName serviceName = new QName("http://www.jboss.org/jbossws/ws-extensions/wssecuritypolicy", "AnnotatedSecurityService");
       URL wsdlURL = new URL(serviceURL + "?wsdl");
@@ -56,39 +66,82 @@ public class CLITestUtils
       assertEquals(AnnotatedServiceImpl.HELLO_WORLD, proxy.sayHello());
    }
 
-   public static String executeAssertedCLICommand(String command) throws IOException, CommandLineException {
-      String result = executeCLICommand(command);
-      assertSuccessfulCLIResult(result);
-      return result;
+   public String executeAssertedCLICommand(String command) throws IOException, CommandLineException {
+      return assertSuccessfulCLIResult(executeCLICommand(command));
    }
 
-   public static String executeCLICommand(String command) throws IOException, CommandLineException {
-           // Initialize the CLI context
-           final CommandContext ctx;
-           try {
-               ctx = CommandContextFactory.getInstance().newCommandContext();
-           } catch(CliInitializationException e) {
-               throw new IllegalStateException("Failed to initialize CLI context", e);
-           }
+   public void restartServer() throws Exception {
+      shutdownServer();
+      startServer();
+   }
 
-           try {
-               // connect to the server controller
-              ctx.connectController();
-   //            ctx.connectController("http-remoting", "localhost", 9990); //TestSuiteEnvironment.getServerPort());
-   //           ctx.connectController("localhost", 9990); //TestSuiteEnvironment.getServerPort());
-              //ctx.connectController("http", "localhost", 9990); //TestSuiteEnvironment.getServerPort());
+   public void startServer() throws Exception
+   {
+      info("Start server");
+      String startServerCommand = System.getProperty("jboss.start");
+      if (startServerCommand == null) {
+         String jbossHome = System.getenv("jboss.home");
+         if (jbossHome == null)
+            jbossHome = System.getProperty("jboss.home");
+         if (jbossHome != null) {
+            String extension = ".sh";
+            startServerCommand = "/bin/sh -c " + FilenameUtils.normalizeNoEndSeparator(jbossHome) + File.separator + "bin" + File.separator + "standalone" + extension;
+         }
+      }
+      if (startServerCommand == null)
+         throw new IllegalStateException("Specify either java property jboss.start or jboss.home");
+      info("Start server using command " + startServerCommand);
+      Runtime.getRuntime().exec(startServerCommand);
+      sleep(startupWaitMillis, "Start server");
+   }
 
+   public void shutdownServer() throws Exception
+   {
+      info("Shutdown server");
+      executeCLICommandQuietly("shutdown");
+      sleep(shutdownWaitMillis, "Shutdown server");
+   }
 
-               ModelNode request = ctx.buildRequest(command);
-               ModelControllerClient client = ctx.getModelControllerClient();
-               ModelNode result = client.execute(request);
-               return result.asString();
-           } finally {
-               ctx.terminateSession();
-           }
+   public void info(String message)
+   {
+      System.err.println(message);
+   }
+
+   public String executeCLICommand(String command) throws IOException, CommandLineException
+   {
+      // Initialize the CLI context
+      final CommandContext ctx;
+      try
+      {
+         ctx = CommandContextFactory.getInstance().newCommandContext();
+      }
+      catch (CliInitializationException e)
+      {
+         throw new IllegalStateException("Failed to initialize CLI context", e);
       }
 
-   public static void assertUrlIsNotAccessible(URL url)
+      try
+      {
+         // connect to the server controller
+         ctx.connectController();
+         //            ctx.connectController("http-remoting", "localhost", 9990); //TestSuiteEnvironment.getServerPort());
+         //           ctx.connectController("localhost", 9990); //TestSuiteEnvironment.getServerPort());
+         //ctx.connectController("http", "localhost", 9990); //TestSuiteEnvironment.getServerPort());
+
+         info("Execute CLI command " + command);
+
+         ModelNode request = ctx.buildRequest(command);
+         ModelControllerClient client = ctx.getModelControllerClient();
+         ModelNode result = client.execute(request);
+         return result.asString();
+      }
+      finally
+      {
+         ctx.terminateSession();
+      }
+   }
+
+   public void assertUrlIsNotAccessible(URL url)
    {
       InputStream stream = null;
       try {
@@ -103,7 +156,7 @@ public class CLITestUtils
       }
    }
 
-   public static String readUrlToString(URL url) throws UnsupportedEncodingException, IOException
+   public String readUrlToString(URL url) throws UnsupportedEncodingException, IOException
    {
       InputStreamReader inputStream = new InputStreamReader(url.openStream(), "UTF-8");
       String wsdl = IOUtils.toString(inputStream);
@@ -111,18 +164,17 @@ public class CLITestUtils
       return wsdl;
    }
 
-   public static void assertSuccessfulCLIResult(String result)
+   public String assertSuccessfulCLIResult(String result)
    {
       assertTrue("Unexpected result " + result, result.contains("\"outcome\" => \"success\""));
-   }
-
-   public static String executeAssertedCLIdeploy(Archive<?> archive) throws IOException, CommandLineException {
-      String result = executeCLIdeploy(archive);
-      assertSuccessfulCLIResult(result);
       return result;
    }
 
-   public static String executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
+   public String executeAssertedCLIdeploy(Archive<?> archive) throws IOException, CommandLineException {
+      return assertSuccessfulCLIResult(executeCLIdeploy(archive));
+   }
+
+   public String executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
    {
       String archiveName = archive.getName();
       assertArchiveNameContainsExtension(archiveName);
@@ -139,7 +191,7 @@ public class CLITestUtils
 
    }
 
-   public static String executeCLICommandQuietly(String command) throws IOException, CommandLineException
+   public String executeCLICommandQuietly(String command) throws IOException, CommandLineException
    {
       try {
          return executeCLICommand(command);
@@ -150,11 +202,11 @@ public class CLITestUtils
       return null;
    }
 
-   public static String undeploy(String deploymentName) throws IOException, CommandLineException {
+   public String undeploy(String deploymentName) throws IOException, CommandLineException {
       return executeCLICommand("undeploy " + deploymentName);
    }
 
-   public static String undeployQuietly(String deploymentName)
+   public String undeployQuietly(String deploymentName)
    {
       try {
          return undeploy(deploymentName);
@@ -165,14 +217,28 @@ public class CLITestUtils
       return null;
    }
 
-   public static void assertCLIOperationRequiesReload(String result)
+   public void assertCLIOperationRequiesReload(String result)
    {
       assertTrue(result.contains("\"operation-requires-reload\" => true"));
    }
 
-   public static void assertCLIResultIsReloadRequired(String result)
+   public void assertCLIResultIsReloadRequired(String result)
    {
       assertTrue(result.contains("\"process-state\" => \"reload-required\""));
+   }
+
+   public void executeAssertedCLIReload() throws Exception
+   {
+      info("CLI Reload");
+      executeAssertedCLICommand("reload"); //FIXME find reliable way to find out server is reloaded //https://community.jboss.org/message/827388
+      //https://issues.jboss.org/browse/AS7-3561
+      sleep(reloadWaitMillis, "CLI Reload");
+   }
+
+   public void sleep(long millis, String name) throws InterruptedException
+   {
+      info("Waiting " + millis + " ms for " + name);
+      Thread.sleep(reloadWaitMillis);
    }
 
 }
