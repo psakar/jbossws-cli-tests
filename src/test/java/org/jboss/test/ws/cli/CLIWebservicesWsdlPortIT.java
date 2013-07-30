@@ -106,7 +106,7 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
    {
       executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
 
-      String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
+      CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
       assertChangeWsdlPortCommandResult(result);
 
       String wsdl = readUrlToString(wsdlURL);
@@ -123,7 +123,7 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
    public void testOriginalWsdlPortIsAccessibleAfterChangeForAnotherDeployment() throws Exception
    {
       executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
+      CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
       assertChangeWsdlPortCommandResult(result);
 
       executeAssertedCLIdeploy(createWarDeployment(WAR_NAME2).createArchive());
@@ -142,7 +142,7 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
    {
 
       executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
-      String result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
+      CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
       assertChangeWsdlPortCommandResult(result);
 
       executeAssertedCLICommand("/deployment=" + WAR_NAME + "/:redeploy");
@@ -158,10 +158,10 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
 
    }
 
-   private void assertChangeWsdlPortCommandResult(String result)
+   private void assertChangeWsdlPortCommandResult(CLIResult result)
    {
-      assertCLIOperationRequiesReload(result);
-      assertCLIResultIsReloadRequired(result);
+      result.assertCLIOperationRequiesReload();
+      result.assertCLIResultIsReloadRequired();
    }
 
 

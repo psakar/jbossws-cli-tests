@@ -57,10 +57,10 @@ public final class DeployAfterReloadIT extends CLITestUtils
    public void testWarDeployUndeployDeploy() throws Exception
    {
       WebArchive war = createWarDeployment(WAR_NAME).createArchive();
-      executeAssertedCLIdeploy(war);
-      assertSuccessfulCLIResult(undeploy(war.getName()));
-      executeAssertedCLIdeploy(war);
-      assertSuccessfulCLIResult(undeploy(war.getName()));
+      executeCLIdeploy(war).assertSuccess();
+      executeCLIUndeploy(war.getName()).assertSuccess();
+      executeCLIdeploy(war).assertSuccess();
+      executeCLIUndeploy(war.getName()).assertSuccess();
    }
 
    @Test
@@ -68,11 +68,11 @@ public final class DeployAfterReloadIT extends CLITestUtils
    {
       WebArchive war = createWarDeployment(WAR_NAME).createArchive();
       executeAssertedCLIdeploy(war);
-      assertSuccessfulCLIResult(undeploy(war.getName()));
-      restartServer(); //remove when https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved
+      executeCLIUndeploy(war.getName()).assertSuccess();
+      temporaryFixForBZ987904();
       executeAssertedCLIReload();
-      executeAssertedCLIdeploy(war);
-      assertSuccessfulCLIResult(undeploy(war.getName()));
+      executeCLIdeploy(war).assertSuccess();
+      executeCLIUndeploy(war.getName()).assertSuccess();
    }
 
 

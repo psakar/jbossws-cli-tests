@@ -213,6 +213,18 @@
 					<scope>test</scope>
 				</dependency>
 			</dependencies>
+		</profile>
+
+		<profile>
+			<id>jboss720-installation</id>
+      <activation>
+        <property>
+<!-- FIXME
+          <name>!jboss720.installation</name>
+ -->
+          <name>!jboss.home</name>
+        </property>
+      </activation>
       <build>
         <plugins>
           <plugin>
@@ -245,12 +257,14 @@
         </plugins>
       </build>
  		</profile>
-
 		<profile>
-			<id>jboss720-start</id>
+			<id>jboss720.start</id>
       <activation>
         <property>
-          <name>!jboss720-start</name>
+<!-- FIXME
+          <name>!jboss.home</name>
+ -->
+          <name>!jboss720.start</name>
         </property>
       </activation>
       <build>
@@ -340,10 +354,13 @@
       </build>
  		</profile>
 		<profile>
-			<id>jboss720-stop</id>
+			<id>jboss720.stop</id>
       <activation>
         <property>
-          <name>!jboss720-stop</name>
+<!-- FIXME
+          <name>!jboss.home</name>
+ -->
+          <name>!jboss720.stop</name>
         </property>
       </activation>
       <build>

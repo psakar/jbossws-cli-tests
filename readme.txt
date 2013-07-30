@@ -1,6 +1,7 @@
 Running
 -------
-mvn -s settings.xml verify 
+mvn -s settings.xml clean verify
+
 
 By default following steps are done (can be switched by switching profiles)
 1 download AS to target
@@ -8,6 +9,11 @@ By default following steps are done (can be switched by switching profiles)
 3 run integration tests
 4 stop AS
 
+To pass all tests until bug https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved run
+mvn -s settings.xml clean verify -DBZ987904
+
+Run single test
+mvn -s settings.xml clean verify -Dit.test=DeployAfterReloadIT
 
 
 Endorsed libraries
@@ -18,7 +24,7 @@ jbossws-cxf-factories-${jbossws-cxf.version}.jar installed by maven by default i
 
 Maven settings
 --------------
-unzip AS repo and add to maven settings (eg. profile jboss-eap-local-maven-repository) 
+unzip AS repo and add to maven settings (eg. profile jboss-eap-local-maven-repository)
 
 example:
 

@@ -66,8 +66,8 @@ public class CLITestUtils
       assertEquals(AnnotatedServiceImpl.HELLO_WORLD, proxy.sayHello());
    }
 
-   public String executeAssertedCLICommand(String command) throws IOException, CommandLineException {
-      return assertSuccessfulCLIResult(executeCLICommand(command));
+   public CLIResult executeAssertedCLICommand(String command) throws IOException, CommandLineException {
+      return executeCLICommand(command).assertSuccess();
    }
 
    public void restartServer() throws Exception {
@@ -107,7 +107,7 @@ public class CLITestUtils
       System.err.println(message);
    }
 
-   public String executeCLICommand(String command) throws IOException, CommandLineException
+   public CLIResult executeCLICommand(String command) throws IOException, CommandLineException
    {
       // Initialize the CLI context
       final CommandContext ctx;
@@ -132,8 +132,7 @@ public class CLITestUtils
 
          ModelNode request = ctx.buildRequest(command);
          ModelControllerClient client = ctx.getModelControllerClient();
-         ModelNode result = client.execute(request);
-         return result.asString();
+         return new CLIResult(client.execute(request));
       }
       finally
       {
@@ -164,17 +163,11 @@ public class CLITestUtils
       return wsdl;
    }
 
-   public String assertSuccessfulCLIResult(String result)
-   {
-      assertTrue("Unexpected result " + result, result.contains("\"outcome\" => \"success\""));
-      return result;
+   public CLIResult executeAssertedCLIdeploy(Archive<?> archive) throws IOException, CommandLineException {
+      return executeCLIdeploy(archive).assertSuccess();
    }
 
-   public String executeAssertedCLIdeploy(Archive<?> archive) throws IOException, CommandLineException {
-      return assertSuccessfulCLIResult(executeCLIdeploy(archive));
-   }
-
-   public String executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
+   public CLIResult executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
    {
       String archiveName = archive.getName();
       assertArchiveNameContainsExtension(archiveName);
@@ -191,7 +184,7 @@ public class CLITestUtils
 
    }
 
-   public String executeCLICommandQuietly(String command) throws IOException, CommandLineException
+   public CLIResult executeCLICommandQuietly(String command) throws IOException, CommandLineException
    {
       try {
          return executeCLICommand(command);
@@ -202,14 +195,14 @@ public class CLITestUtils
       return null;
    }
 
-   public String undeploy(String deploymentName) throws IOException, CommandLineException {
+   public CLIResult executeCLIUndeploy(String deploymentName) throws IOException, CommandLineException {
       return executeCLICommand("undeploy " + deploymentName);
    }
 
-   public String undeployQuietly(String deploymentName)
+   public CLIResult undeployQuietly(String deploymentName)
    {
       try {
-         return undeploy(deploymentName);
+         return executeCLIUndeploy(deploymentName);
       } catch (Exception e) {
          // ignore
          // FIXME debug log
@@ -217,15 +210,6 @@ public class CLITestUtils
       return null;
    }
 
-   public void assertCLIOperationRequiesReload(String result)
-   {
-      assertTrue(result.contains("\"operation-requires-reload\" => true"));
-   }
-
-   public void assertCLIResultIsReloadRequired(String result)
-   {
-      assertTrue(result.contains("\"process-state\" => \"reload-required\""));
-   }
 
    public void executeAssertedCLIReload() throws Exception
    {
@@ -241,4 +225,36 @@ public class CLITestUtils
       Thread.sleep(reloadWaitMillis);
    }
 
+   //remove when https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved
+   protected void temporaryFixForBZ987904() throws Exception
+   {
+      if (System.getProperty("BZ987904") != null)
+         restartServer();
+   }
+
+
+   public static final class CLIResult {
+      public final ModelNode result;
+
+      public CLIResult(ModelNode result)
+      {
+         this.result = result;
+      }
+      public CLIResult assertSuccess() {
+         assertTrue("Unexpected result " + result, result.asString().contains("\"outcome\" => \"success\""));
+         return this;
+      }
+
+      public CLIResult assertCLIOperationRequiesReload()
+      {
+         assertTrue(result.asString().contains("\"operation-requires-reload\" => true"));
+         return this;
+      }
+
+      public CLIResult assertCLIResultIsReloadRequired()
+      {
+         assertTrue(result.asString().contains("\"process-state\" => \"reload-required\""));
+         return this;
+      }
+   }
 }
