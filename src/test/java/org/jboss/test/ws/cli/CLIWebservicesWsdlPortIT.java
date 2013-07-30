@@ -23,33 +23,35 @@ package org.jboss.test.ws.cli;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
 
+import org.jboss.as.cli.CommandLineException;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.jboss.test.ws.BaseDeployment.WarDeployment;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
+/**
+ *
+ * see https://docspace.corp.redhat.com/docs/DOC-152480
+ *
+ */
 public final class CLIWebservicesWsdlPortIT extends CLITestUtils
 {
    private static final int WSDL_PORT = 8080;
    private static final int WSDL_PORT_CHANGED = 8084;
 
    private static final String NAME = "CLIWebservicesWsdlPortTestCase";
-   private static final String WAR_NAME = NAME + WAR_EXTENSTION;
-   private final String serviceURL = "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + WSDL_PORT + "/" + NAME + "/AnnotatedSecurityService";
-   private final String serviceURLChanged = "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + WSDL_PORT_CHANGED + "/" + NAME + "/AnnotatedSecurityService";
-   private URL wsdlURL;
-   private URL wsdlURLChanged;
-
    private static final String NAME2 = "CLIWebservicesWsdlPortTestCase2";
-   private static final String WAR_NAME2 = NAME2 + WAR_EXTENSTION;
-   private final String serviceURL2 = "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + WSDL_PORT + "/" + NAME2 + "/AnnotatedSecurityService";
-   private final String serviceURLChanged2 = "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + WSDL_PORT_CHANGED + "/" + NAME2 + "/AnnotatedSecurityService";
-   private URL wsdlURL2;
-   private URL wsdlURLChanged2;
+
+
+   private WebArchive war;
+   private WebArchive war2;
 
 
    private static WarDeployment createWarDeployment(String name)
@@ -68,32 +70,54 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
 
    @Before
    public void before() throws Exception {
-      wsdlURL = new URL(serviceURL + "?wsdl");
-      wsdlURLChanged = new URL(serviceURLChanged + "?wsdl");
-      wsdlURL2 = new URL(serviceURL2 + "?wsdl");
-      wsdlURLChanged2 = new URL(serviceURLChanged2 + "?wsdl");
+      war = createWarDeployment(NAME + WAR_EXTENSTION).createArchive();
+      war2 = createWarDeployment(NAME2 + WAR_EXTENSTION).createArchive();
+   }
+
+   private URL createWsdlUrl(String name, int wsdlPort) throws MalformedURLException
+   {
+      return new URL(createServiceURL(name, wsdlPort) + "?wsdl");
    }
 
    @After
    public void after() throws Exception {
       info("After");
-      undeployQuietly(WAR_NAME);
-      undeployQuietly(WAR_NAME2);
+      undeployQuietly(war.getName());
+      undeployQuietly(war2.getName());
       executeCLICommandQuietly("/subsystem=webservices/:undefine-attribute(name=wsdl-port)");
       restartServer(); //remove when https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved
                        // add executeCLICommandQuietly("/:reload");
    }
 
-   @Test
-   public void testDefaultWsdlPort() throws Exception
+   private String createServiceURL(String contextName, int wsdlPort)
    {
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      return "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + wsdlPort + "/" + contextName + "/AnnotatedSecurityService";
+   }
 
-      assertCorrectWsdlReturned(readUrlToString(wsdlURL));
-      assertServiceIsFunctional(serviceURL);
+   @Test
+   public void testDefaultConfiguration() throws Exception
+   {
+      deployWar();
 
-      assertUrlIsNotAccessible(wsdlURLChanged);
-      assertServiceIsNotAvailable(serviceURLChanged);
+      assertOriginalConfiguration();
+   }
+
+   private void deployWar() throws IOException, CommandLineException
+   {
+      executeCLIdeploy(war).assertSuccess();
+   }
+
+   private void assertOriginalConfiguration() throws UnsupportedEncodingException, IOException, MalformedURLException
+   {
+      assertOriginalConfiguration(NAME);
+   }
+   private void assertOriginalConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
+   {
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName, WSDL_PORT)));
+      assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT));
+
+      assertUrlIsNotAccessible(createWsdlUrl(contextName, WSDL_PORT_CHANGED));
+      assertServiceIsNotAvailable(createServiceURL(contextName, WSDL_PORT_CHANGED));
    }
 
    private void assertCorrectWsdlReturned(String wsdl)
@@ -101,69 +125,145 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
       assertTrue(wsdl.contains("sayHelloResponse"));
    }
 
+
    @Ignore
-   public void testOriginalWsdlPortIsAccessibleAfterChange() throws Exception
+   @Test//1BA
+   public void testChangeAffectsNewDeploymentsWithoutReload() throws Exception
    {
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      changeConfiguration();
 
-      CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
-      assertChangeWsdlPortCommandResult(result);
+      deployWar();
 
-      String wsdl = readUrlToString(wsdlURL);
+      assertNewConfiguration();
+   }
+   private void assertNewConfiguration() throws UnsupportedEncodingException, IOException, MalformedURLException
+   {
+      assertNewConfiguration(NAME);
+   }
 
-      assertCorrectWsdlReturned(wsdl);
-      assertServiceIsFunctional(serviceURL);
+   private void assertNewConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
+   {
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName, WSDL_PORT_CHANGED)));
+      assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT_CHANGED));
+      assertUrlIsNotAccessible(createWsdlUrl(contextName, WSDL_PORT));
+      assertServiceIsNotAvailable(createServiceURL(contextName, WSDL_PORT));
+   }
 
-      assertUrlIsNotAccessible(wsdlURLChanged);
-      assertServiceIsNotAvailable(serviceURLChanged);
+   private void changeConfiguration() throws IOException, CommandLineException
+   {
+      String command = "/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")";
+      executeAssertedCLICommand(command).assertReloadRequired();
+   }
+
+   @Test//2BA
+   public void testChangeFollowedByReloadAffectsNewDeployments() throws Exception
+   {
+      changeConfiguration();
+
+      reloadServer();
+
+      deployWar();
+
+      assertNewConfiguration();
+   }
+
+   private void reloadServer() throws Exception
+   {
+      temporaryFixForBZ987904();
+      executeCLIReload().assertSuccess();
+   }
+
+   @Test//3BA
+   public void testChangeDoesNotAffectExistingDeploymentsBeforeReload() throws Exception
+   {
+      deployWar();
+
+      changeConfiguration();
+
+      assertOriginalConfiguration();
 
    }
 
+
+
+   @Test//4BA
+   public void testChangeAffectsExistingDeploymentsAfterReload() throws Exception
+   {
+      deployWar();
+
+      changeConfiguration();
+
+      reloadServer();
+
+      assertNewConfiguration();
+   }
+
+
+
+   @Test//5BA
+   public void testChangeAffectsNewDeploymentsBeforeReloadAndExistingDeploymentsAfterReload() throws Exception
+   {
+
+      deployWar();
+
+      changeConfiguration();
+
+      deployAnotherWar();
+
+      assertOriginalConfiguration(NAME);
+      assertNewConfiguration(NAME2);
+
+      reloadServer();
+
+      assertNewConfiguration(NAME);
+      assertNewConfiguration(NAME2);
+   }
+
+   private void deployAnotherWar() throws IOException, CommandLineException
+   {
+      executeCLIdeploy(war2).assertSuccess();
+   }
+
+   /*
    @Ignore
    public void testOriginalWsdlPortIsAccessibleAfterChangeForAnotherDeployment() throws Exception
    {
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      executeCLIdeploy((Archive<?>) createWarDeployment(WAR_NAME).createArchive()).assertSuccess();
       CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
-      assertChangeWsdlPortCommandResult(result);
+      result.assertReloadRequired();
 
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME2).createArchive());
+      executeCLIdeploy((Archive<?>) createWarDeployment(WAR_NAME2).createArchive()).assertSuccess();
 
-      String wsdl = readUrlToString(wsdlURL2);
+      String wsdl = readUrlToString(createWsdlUrl(NAME2, WSDL_PORT));
 
       assertCorrectWsdlReturned(wsdl);
-      assertServiceIsFunctional(serviceURL2);
+      assertServiceIsFunctional(createServiceURL(NAME2, WSDL_PORT));
 
-      assertUrlIsNotAccessible(wsdlURLChanged2);
-      assertServiceIsNotAvailable(serviceURLChanged2);
+      assertUrlIsNotAccessible(createWsdlUrl(NAME2, WSDL_PORT_CHANGED));
+      assertServiceIsNotAvailable(createServiceURL(NAME2, WSDL_PORT_CHANGED));
    }
 
    @Ignore
    public void testOriginalWsdlPortIsAccessibleAfterChangeForRedeployment() throws Exception
    {
 
-      executeAssertedCLIdeploy(createWarDeployment(WAR_NAME).createArchive());
+      executeCLIdeploy((Archive<?>) createWarDeployment(WAR_NAME).createArchive()).assertSuccess();
       CLIResult result = executeAssertedCLICommand("/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")");
-      assertChangeWsdlPortCommandResult(result);
+      result.assertReloadRequired();
 
       executeAssertedCLICommand("/deployment=" + WAR_NAME + "/:redeploy");
 
 
-      String wsdl = readUrlToString(wsdlURL);
+      String wsdl = readUrlToString(createWsdlUrl(NAME, WSDL_PORT));
 
       assertCorrectWsdlReturned(wsdl);
-      assertServiceIsFunctional(serviceURL);
+      assertServiceIsFunctional(createServiceURL(NAME, WSDL_PORT));
 
-      assertUrlIsNotAccessible(wsdlURLChanged);
-      assertServiceIsNotAvailable(serviceURLChanged);
+      assertUrlIsNotAccessible(createWsdlUrl(NAME, WSDL_PORT_CHANGED));
+      assertServiceIsNotAvailable(createServiceURL(NAME, WSDL_PORT_CHANGED));
 
    }
 
-   private void assertChangeWsdlPortCommandResult(CLIResult result)
-   {
-      result.assertCLIOperationRequiesReload();
-      result.assertCLIResultIsReloadRequired();
-   }
-
-
+*/
 
 }

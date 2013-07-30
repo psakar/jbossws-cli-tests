@@ -163,10 +163,6 @@ public class CLITestUtils
       return wsdl;
    }
 
-   public CLIResult executeAssertedCLIdeploy(Archive<?> archive) throws IOException, CommandLineException {
-      return executeCLIdeploy(archive).assertSuccess();
-   }
-
    public CLIResult executeCLIdeploy(Archive<?> archive) throws IOException, CommandLineException
    {
       String archiveName = archive.getName();
@@ -211,12 +207,14 @@ public class CLITestUtils
    }
 
 
-   public void executeAssertedCLIReload() throws Exception
+   public CLIResult executeCLIReload() throws Exception
    {
       info("CLI Reload");
-      executeAssertedCLICommand("reload"); //FIXME find reliable way to find out server is reloaded //https://community.jboss.org/message/827388
+      //FIXME find reliable way to find out server is reloaded //https://community.jboss.org/message/827388
+      CLIResult result = executeCLICommand("reload").assertSuccess();
       //https://issues.jboss.org/browse/AS7-3561
       sleep(reloadWaitMillis, "CLI Reload");
+      return result;
    }
 
    public void sleep(long millis, String name) throws InterruptedException
@@ -256,5 +254,13 @@ public class CLITestUtils
          assertTrue(result.asString().contains("\"process-state\" => \"reload-required\""));
          return this;
       }
+
+      public CLIResult assertReloadRequired()
+      {
+         assertCLIOperationRequiesReload();
+         assertCLIResultIsReloadRequired();
+         return this;
+      }
+
    }
 }

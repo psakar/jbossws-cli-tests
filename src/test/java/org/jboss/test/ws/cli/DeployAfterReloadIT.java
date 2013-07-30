@@ -67,10 +67,10 @@ public final class DeployAfterReloadIT extends CLITestUtils
    public void testWarDeployUndeployDeployWithReload() throws Exception
    {
       WebArchive war = createWarDeployment(WAR_NAME).createArchive();
-      executeAssertedCLIdeploy(war);
+      executeCLIdeploy(war).assertSuccess();
       executeCLIUndeploy(war.getName()).assertSuccess();
       temporaryFixForBZ987904();
-      executeAssertedCLIReload();
+      executeCLIReload().assertSuccess();
       executeCLIdeploy(war).assertSuccess();
       executeCLIUndeploy(war.getName()).assertSuccess();
    }
