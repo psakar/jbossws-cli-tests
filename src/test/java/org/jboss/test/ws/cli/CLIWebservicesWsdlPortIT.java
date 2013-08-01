@@ -43,7 +43,8 @@ import org.junit.Test;
  */
 public final class CLIWebservicesWsdlPortIT extends CLITestUtils
 {
-   private static final int WSDL_PORT = 8080;
+   private static final int PORT = 8080;
+   private static final int WSDL_PORT = PORT;
    private static final int WSDL_PORT_CHANGED = 8084;
 
    private static final String NAME = "CLIWebservicesWsdlPortTestCase";
@@ -74,9 +75,9 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
       war2 = createWarDeployment(NAME2 + WAR_EXTENSTION).createArchive();
    }
 
-   private URL createWsdlUrl(String name, int wsdlPort) throws MalformedURLException
+   private URL createWsdlUrl(String name) throws MalformedURLException
    {
-      return new URL(createServiceURL(name, wsdlPort) + "?wsdl");
+      return new URL(createServiceURL(name) + "?wsdl");
    }
 
    @After
@@ -89,9 +90,14 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
                        // add executeCLICommandQuietly("/:reload");
    }
 
-   private String createServiceURL(String contextName, int wsdlPort)
+   private String createServiceURL(String contextName)
    {
-      return "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + wsdlPort + "/" + contextName + "/AnnotatedSecurityService";
+      return createServiceURL(contextName, PORT);
+   }
+
+   private String createServiceURL(String contextName, int port)
+   {
+      return "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + port + "/" + contextName + "/AnnotatedSecurityService";
    }
 
    @Test
@@ -113,16 +119,14 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
    }
    private void assertOriginalConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
    {
-      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName, WSDL_PORT)));
-      assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT));
-
-      assertUrlIsNotAccessible(createWsdlUrl(contextName, WSDL_PORT_CHANGED));
-      assertServiceIsNotAvailable(createServiceURL(contextName, WSDL_PORT_CHANGED));
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_PORT);
+      assertServiceIsFunctional(createServiceURL(contextName));
    }
 
-   private void assertCorrectWsdlReturned(String wsdl)
+   private void assertCorrectWsdlReturned(String wsdl, String contextName, int wsdlPort)
    {
       assertTrue(wsdl.contains("sayHelloResponse"));
+      assertTrue(wsdl.contains("<soap:address location=\"" + createServiceURL(contextName, wsdlPort) + "\"/>"));
    }
 
 
@@ -143,16 +147,16 @@ public final class CLIWebservicesWsdlPortIT extends CLITestUtils
 
    private void assertNewConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
    {
-      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName, WSDL_PORT_CHANGED)));
-      assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT_CHANGED));
-      assertUrlIsNotAccessible(createWsdlUrl(contextName, WSDL_PORT));
-      assertServiceIsNotAvailable(createServiceURL(contextName, WSDL_PORT));
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_PORT_CHANGED);
+      // FIXME assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT_CHANGED)); will not work with wdl_port rewritten to new value
    }
 
    private void changeConfiguration() throws IOException, CommandLineException
    {
       String command = "/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")";
-      executeAssertedCLICommand(command).assertReloadRequired();
+      executeCLICommand(command).assertSuccess().assertReloadRequired();
+      String verfiyCommand = "/subsystem=webservices/:read-attribute(name=wsdl-port)";
+      executeCLICommand(verfiyCommand).assertSuccess().assertResultAsStringEquals(WSDL_PORT_CHANGED + "");
    }
 
    @Test//2BA

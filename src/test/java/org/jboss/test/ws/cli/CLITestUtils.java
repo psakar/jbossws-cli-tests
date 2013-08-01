@@ -261,6 +261,10 @@ public class CLITestUtils
          assertCLIResultIsReloadRequired();
          return this;
       }
+      public void assertResultAsStringEquals(String expected)
+      {
+         assertEquals(result.get("result").asString(), expected);
+      }
 
    }
 }
