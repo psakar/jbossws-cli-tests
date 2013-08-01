@@ -39,7 +39,7 @@ public class CLITestUtils
    public CLITestUtils()
    {
       shutdownWaitMillis = 4000;
-      reloadWaitMillis = 3000;
+      reloadWaitMillis = 5000;
       startupWaitMillis = 4000;
    }
 
@@ -100,6 +100,7 @@ public class CLITestUtils
       info("Shutdown server");
       executeCLICommandQuietly("shutdown");
       sleep(shutdownWaitMillis, "Shutdown server");
+      //FIXME verify server is not running, if yes kill it
    }
 
    public void info(String message)

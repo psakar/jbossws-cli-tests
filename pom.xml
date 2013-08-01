@@ -12,9 +12,16 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+		<jbossws-cxf.version>4.1.4.Final-redhat-3</jbossws-cxf.version>
+		<jboss720.version>7.2.1.Final-redhat-5</jboss720.version>
+<!--
 		<jbossws-cxf.version>4.1.4.Final-redhat-1</jbossws-cxf.version>
-		<junit.version>4.8.2</junit.version>
 		<jboss720.version>7.2.1.Final-redhat-4</jboss720.version>
+ -->
+
+
+		<junit.version>4.8.2</junit.version>
+
 		<jboss.home>${project.build.directory}/jboss-eap-6.1</jboss.home>
 		<jboss.java.home>${java.home}</jboss.java.home>
 		<jboss.jvm.args></jboss.jvm.args>
