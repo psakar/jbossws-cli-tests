@@ -21,49 +21,30 @@
  */
 package org.jboss.test.ws.cli;
 
+import static org.jboss.test.ws.cli.CLIWebservicesWsdlPortIT.*;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
-
-import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.jboss.test.ws.BaseDeployment.WarDeployment;
 /**
  *
  * see https://docspace.corp.redhat.com/docs/DOC-152480
  *
  */
-public final class CLIWebservicesWsdlPortIT extends CLITestCase
+public final class CLIWebservicesWsdlHostIT extends CLITestCase
 {
-   static final int PORT = 8080;
-   static final int WSDL_PORT = PORT;
-   private static final int WSDL_PORT_CHANGED = 8084;
-
-   static final String NAME = "CLIWebservicesWsdlPortTestCase";
-   static final String NAME2 = "CLIWebservicesWsdlPortTestCase2";
+   private static final String WSDL_HOST = "localhost";
+   private static final String WSDL_HOST_DEFAULT = "${jboss.bind.address:127.0.0.1}";//
+   private static final String WSDL_HOST_CHANGED = "test.domain.com";
 
 
-   static WarDeployment createWarDeployment(String name)
+   public CLIWebservicesWsdlHostIT()
    {
-      return new WarDeployment(name) { {
-         archive
-            .setManifest(new StringAsset("Manifest-Version: 1.0\n"
-                  + "Dependencies: org.jboss.ws.cxf.jbossws-cxf-client\n"))
-            .addClass(org.jboss.test.ws.cli.AnnotatedServiceIface.class)
-            .addClass(org.jboss.test.ws.cli.AnnotatedServiceImpl.class)
-            .addClass(org.jboss.test.ws.cli.SayHello.class)
-            .addClass(org.jboss.test.ws.cli.SayHelloResponse.class)
-            ;
-      } };
-   }
-
-   public CLIWebservicesWsdlPortIT()
-   {
-      super("/subsystem=webservices/:read-attribute(name=wsdl-port)",
-            "/subsystem=webservices/:write-attribute(name=wsdl-port,value=" + WSDL_PORT_CHANGED + ")",
-         "/subsystem=webservices/:undefine-attribute(name=wsdl-port)",
+      super("/subsystem=webservices/:read-attribute(name=wsdl-host)",
+            "/subsystem=webservices/:write-attribute(name=wsdl-host,value=" + WSDL_HOST_CHANGED + ")",
+         "/subsystem=webservices/:write-attribute(name=wsdl-host,value=\"" + WSDL_HOST_DEFAULT + "\")",
             createWarDeployment(NAME + WAR_EXTENSTION).createArchive(),
             createWarDeployment(NAME2 + WAR_EXTENSTION).createArchive()
             );
@@ -77,37 +58,41 @@ public final class CLIWebservicesWsdlPortIT extends CLITestCase
    @Override
    protected void assertDefaultConfigurationValue(CLIResult result)
    {
-      result.isUndefinedResult();
+      result.assertResultAsStringEquals(WSDL_HOST_DEFAULT);
    }
 
    private String createServiceURL(String contextName)
    {
       return createServiceURL(contextName, PORT);
    }
-
    private String createServiceURL(String contextName, int port)
    {
-      return "http://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + port + "/" + contextName + "/AnnotatedSecurityService";
+      return createServiceURL("localhost", contextName, port); ///*JBossWSTestHelper.getServerHost()*/
+   }
+
+   private String createServiceURL(String wsdlHost, String contextName, int port)
+   {
+      return "http://" + wsdlHost + ":" + PORT + "/" + contextName + "/AnnotatedSecurityService";
    }
 
 
    @Override
    protected void assertOriginalConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
    {
-      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_PORT);
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_HOST);
       assertServiceIsFunctional(createServiceURL(contextName));
    }
 
-   private void assertCorrectWsdlReturned(String wsdl, String contextName, int wsdlPort)
+   private void assertCorrectWsdlReturned(String wsdl, String contextName, String wsdlHost)
    {
       assertTrue(wsdl.contains("sayHelloResponse"));
-      assertTrue(wsdl.contains("<soap:address location=\"" + createServiceURL(contextName, wsdlPort) + "\"/>"));
+      assertTrue(wsdl.contains("<soap:address location=\"" + createServiceURL(wsdlHost, contextName, WSDL_PORT) + "\"/>"));
    }
 
    @Override
    protected void assertNewConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
    {
-      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_PORT_CHANGED);
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(contextName)), contextName, WSDL_HOST_CHANGED);
       // FIXME assertServiceIsFunctional(createServiceURL(contextName, WSDL_PORT_CHANGED)); will not work with wdl_port rewritten to new value
    }
 
@@ -121,6 +106,6 @@ public final class CLIWebservicesWsdlPortIT extends CLITestCase
    @Override
    protected void assertChangedConfigurationValue(CLIResult result)
    {
-      result.assertResultAsStringEquals(WSDL_PORT_CHANGED + "");
+      result.assertResultAsStringEquals(WSDL_HOST_CHANGED);
    }
 }

@@ -186,8 +186,7 @@ public class CLITestUtils
       try {
          return executeCLICommand(command);
       } catch (Exception e) {
-         // ignore
-         // FIXME debug log
+         info(e.getMessage());
       }
       return null;
    }
@@ -232,6 +231,13 @@ public class CLITestUtils
    }
 
 
+   protected void reloadServer() throws Exception
+   {
+      temporaryFixForBZ987904();
+      executeCLIReload().assertSuccess();
+   }
+
+
    public static final class CLIResult {
       public final ModelNode result;
 
@@ -265,6 +271,10 @@ public class CLITestUtils
       public void assertResultAsStringEquals(String expected)
       {
          assertEquals(result.get("result").asString(), expected);
+      }
+      public void isUndefinedResult()
+      {
+         assertFalse("Expected undefined value, found " + result.asString(), result.get("result").isDefined());
       }
 
    }
