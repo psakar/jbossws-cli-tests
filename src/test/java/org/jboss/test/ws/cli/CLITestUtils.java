@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -70,12 +71,12 @@ public class CLITestUtils
       return executeCLICommand(command).assertSuccess();
    }
 
-   public void restartServer() throws Exception {
+   public void restartServer() throws IOException, CommandLineException {
       shutdownServer();
       startServer();
    }
 
-   public void startServer() throws Exception
+   public void startServer() throws IOException
    {
       info("Start server");
       String startServerCommand = System.getProperty("jboss.start");
@@ -95,7 +96,7 @@ public class CLITestUtils
       sleep(startupWaitMillis, "Start server");
    }
 
-   public void shutdownServer() throws Exception
+   public void shutdownServer() throws IOException, CommandLineException
    {
       info("Shutdown server");
       executeCLICommandQuietly("shutdown");
@@ -106,6 +107,12 @@ public class CLITestUtils
    public void info(String message)
    {
       System.err.println(message);
+   }
+
+   public void error(String message, Exception e)
+   {
+      System.err.println(message);
+      e.printStackTrace(System.err);
    }
 
    public CLIResult executeCLICommand(String command) throws IOException, CommandLineException
@@ -133,7 +140,9 @@ public class CLITestUtils
 
          ModelNode request = ctx.buildRequest(command);
          ModelControllerClient client = ctx.getModelControllerClient();
-         return new CLIResult(client.execute(request));
+         ModelNode result = client.execute(request);
+         info("Result " + result.asString());
+         return new CLIResult(result);
       }
       finally
       {
@@ -158,7 +167,13 @@ public class CLITestUtils
 
    public String readUrlToString(URL url) throws UnsupportedEncodingException, IOException
    {
-      InputStreamReader inputStream = new InputStreamReader(url.openStream(), "UTF-8");
+      InputStream stream = null;
+      try {
+         url.openStream();
+      } catch (ConnectException e) {
+         throw new IllegalStateException("Can not read from " + url.toString(), e);
+      }
+      InputStreamReader inputStream = new InputStreamReader(stream, "UTF-8");
       String wsdl = IOUtils.toString(inputStream);
       IOUtils.closeQuietly(inputStream);
       return wsdl;
@@ -207,7 +222,7 @@ public class CLITestUtils
    }
 
 
-   public CLIResult executeCLIReload() throws Exception
+   public CLIResult executeCLIReload() throws IOException, CommandLineException
    {
       info("CLI Reload");
       //FIXME find reliable way to find out server is reloaded //https://community.jboss.org/message/827388
@@ -217,23 +232,24 @@ public class CLITestUtils
       return result;
    }
 
-   public void sleep(long millis, String name) throws InterruptedException
+   public void sleep(long millis, String name)
    {
       info("Waiting " + millis + " ms for " + name);
-      Thread.sleep(reloadWaitMillis);
+      try {
+         Thread.sleep(reloadWaitMillis);
+      } catch (InterruptedException e) {
+         error("Interrupted " + e.getMessage(), e);
+      }
    }
 
-   //remove when https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved
-   protected void temporaryFixForBZ987904() throws Exception
-   {
-      if (System.getProperty("BZ987904") != null)
-         restartServer();
+   //remove when //https://bugzilla.redhat.com/show_bug.cgi?id=996558
+   protected void temporaryFixForBZ996558() throws IOException, CommandLineException {
+      if (System.getProperty("BZ996558") != null)
+         reloadServer();
    }
 
-
-   protected void reloadServer() throws Exception
+   protected void reloadServer() throws IOException, CommandLineException
    {
-      temporaryFixForBZ987904();
       executeCLIReload().assertSuccess();
    }
 
@@ -252,8 +268,13 @@ public class CLITestUtils
 
       public CLIResult assertCLIOperationRequiesReload()
       {
-         assertTrue(result.asString().contains("\"operation-requires-reload\" => true"));
+         assertTrue(isReloadRequired());
          return this;
+      }
+
+      public boolean isReloadRequired()
+      {
+         return result.asString().contains("\"operation-requires-reload\" => true");
       }
 
       public CLIResult assertCLIResultIsReloadRequired()

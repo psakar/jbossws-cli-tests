@@ -58,8 +58,13 @@ public abstract class CLITestCase extends CLITestUtils
       info("After");
       undeployQuietly(war.getName());
       undeployQuietly(anotherWar.getName());
-      executeCLICommandQuietly(resetConfigurationCommand);
+      resetConfiguration();
       reloadServer();
+   }
+
+   protected void resetConfiguration() throws IOException, CommandLineException
+   {
+      executeCLICommandQuietly(resetConfigurationCommand);
    }
 
    @Test

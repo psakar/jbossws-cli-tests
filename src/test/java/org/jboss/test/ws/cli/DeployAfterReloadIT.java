@@ -69,8 +69,7 @@ public final class DeployAfterReloadIT extends CLITestUtils
       WebArchive war = createWarDeployment(WAR_NAME).createArchive();
       executeCLIdeploy(war).assertSuccess();
       executeCLIUndeploy(war.getName()).assertSuccess();
-      temporaryFixForBZ987904();
-      executeCLIReload().assertSuccess();
+      reloadServer();
       executeCLIdeploy(war).assertSuccess();
       executeCLIUndeploy(war.getName()).assertSuccess();
    }
