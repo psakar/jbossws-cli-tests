@@ -9,8 +9,8 @@ By default following steps are done (can be switched by switching profiles)
 3 run integration tests
 4 stop AS
 
-To pass all tests until bug https://bugzilla.redhat.com/show_bug.cgi?id=987904 is resolved run
-mvn -s settings.xml clean verify -DBZ987904
+To pass all tests until bug https://bugzilla.redhat.com/show_bug.cgi?id=996558 is resolved run
+mvn -s settings.xml clean verify -DBZ996558
 
 Run single testcase
 mvn -s settings.xml clean verify -Dit.test=DeployAfterReloadIT
