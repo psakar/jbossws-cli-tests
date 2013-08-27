@@ -24,9 +24,7 @@ package org.jboss.test.ws.cli;
 import javax.jws.WebService;
 
 import org.apache.cxf.annotations.EndpointProperties;
-import org.jboss.ws.api.annotation.WebContext;
 
-@WebContext(transportGuarantee = "CONFIDENTIAL")
 @WebService(
    portName = "AnnotatedSecurityServicePort",
    serviceName = "AnnotatedSecurityService",

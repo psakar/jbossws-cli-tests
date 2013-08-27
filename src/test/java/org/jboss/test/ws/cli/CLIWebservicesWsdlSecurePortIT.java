@@ -29,9 +29,24 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.cxf.configuration.jsse.TLSClientParameters;
+import org.apache.cxf.endpoint.Client;
+import org.apache.cxf.frontend.ClientProxy;
+import org.apache.cxf.transport.http.HTTPConduit;
 import org.jboss.as.cli.CommandLineException;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.test.ws.BaseDeployment.WarDeployment;
@@ -43,11 +58,9 @@ import org.junit.Before;
  */
 public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
 {
-   static final String PROTOCOL_HTTP = "http";
-   static final String PROTOCOL_HTTPS = "https";
-   static final int PORT = 8080;
-   static final int WSDL_PORT = PORT;
-   private static final int WSDL_PORT_HTTPS = 8843;
+   private static final int SSL_PORT = 8443;
+   private static final String PROTOCOL_HTTPS = "https";
+   private static final int WSDL_PORT_HTTPS = SSL_PORT;
 
    static final String NAME = "CLIWebservicesWsdlSecuredPortTestCase";
    static final String NAME2 = "CLIWebservicesWsdlSecuredPortTestCase2";
@@ -66,6 +79,7 @@ public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
             .addClass(org.jboss.test.ws.cli.SayHello.class)
             .addClass(org.jboss.test.ws.cli.SayHelloResponse.class)
             .addAsWebResource("index.html")
+            .addAsWebInfResource(NAME + "/" + "web.xml")
             ;
       } };
    }
@@ -74,6 +88,60 @@ public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
    public void before() throws Exception {
       Map<String, String> sslOptionsMap = new HashMap<String, String>();
       addSecurityRealm(HTTPS_LISTENER_REALM_NAME, sslOptionsMap);
+
+      installHostNameVerifierNotValidatingHostname();
+      installTrustManagerNotValidatingCertificateChains();
+   }
+
+   private void installHostNameVerifierNotValidatingHostname()
+   {
+      HostnameVerifier hv = new HostnameVerifier()
+      {
+         @Override
+         public boolean verify(String urlHostName, SSLSession session)
+         {
+            System.err.println(String.format("Warning: URL Host: '%s' does not equal '%s'", urlHostName,
+                  session.getPeerHost()));
+            return true;
+         }
+      };
+      HttpsURLConnection.setDefaultHostnameVerifier(hv);
+   }
+
+   private void installTrustManagerNotValidatingCertificateChains() throws NoSuchAlgorithmException, KeyManagementException
+   {
+      // see http://code.google.com/p/misc-utils/wiki/JavaHttpsUrl
+      SSLContext sslContext = SSLContext.getInstance("SSL");
+      sslContext.init(null, createTrustManagerNotValidatingCertificateChains(), new java.security.SecureRandom());
+      HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+   }
+
+   private TrustManager[] createTrustManagerNotValidatingCertificateChains()
+   {
+      final TrustManager[] trustAllCerts = new TrustManager[]
+      {new X509TrustManager()
+      {
+         @Override
+         public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType)
+               throws CertificateException
+         {
+
+         }
+
+         @Override
+         public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType)
+               throws CertificateException
+         {
+         }
+
+         @Override
+         public X509Certificate[] getAcceptedIssuers()
+         {
+            // TODO Auto-generated method stub
+            return null;
+         }
+      }};
+      return trustAllCerts;
    }
 
    @Override
@@ -122,11 +190,6 @@ public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
       result.isUndefinedResult();
    }
 
-   private String createServiceURL(String contextName)
-   {
-      return createServiceURL(PROTOCOL_HTTP, contextName, PORT);
-   }
-
    private String createServiceURL(String protocol, String contextName, int port)
    {
       return protocol + "://" + "localhost"/*JBossWSTestHelper.getServerHost()*/ + ":" + port + "/" + contextName + "/AnnotatedSecurityService";
@@ -136,14 +199,15 @@ public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
    @Override
    protected void assertOriginalConfiguration(String contextName) throws UnsupportedEncodingException, IOException, MalformedURLException
    {
-      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(PROTOCOL_HTTP, contextName, WSDL_PORT)), PROTOCOL_HTTP, contextName, WSDL_PORT);
-      assertServiceIsFunctional(createServiceURL(contextName));
+      assertCorrectWsdlReturned(readUrlToString(createWsdlUrl(PROTOCOL_HTTPS, contextName, SSL_PORT)), PROTOCOL_HTTPS, contextName, SSL_PORT);
+      assertServiceIsFunctional(createServiceURL(PROTOCOL_HTTPS, contextName, SSL_PORT));
    }
 
    private void assertCorrectWsdlReturned(String wsdl, String protocol, String contextName, int wsdlPort)
    {
-      assertTrue(wsdl.contains("sayHelloResponse"));
-      assertTrue(wsdl.contains("<soap:address location=\"" + createServiceURL(protocol, contextName, wsdlPort) + "\"/>"));
+      assertTrue("Expected wsdl contains string sayHelloResponse, found " + wsdl , wsdl.contains("sayHelloResponse"));
+      String expectedSoapAddress = "<soap:address location=\"" + createServiceURL(protocol, contextName, wsdlPort) + "\"/>";
+      assertTrue("Expected SOAP address " + expectedSoapAddress + " not found in " + wsdl, wsdl.contains(expectedSoapAddress));
    }
 
    @Override
@@ -164,5 +228,23 @@ public final class CLIWebservicesWsdlSecurePortIT extends CLITestCase
    protected void assertChangedConfigurationValue(CLIResult result)
    {
       result.assertResultAsStringEquals(WSDL_PORT_HTTPS + "");
+   }
+
+   @Override
+   protected AnnotatedServiceIface createServiceProxy(String serviceURL) throws MalformedURLException
+   {
+      AnnotatedServiceIface proxy = super.createServiceProxy(serviceURL);
+      setupProxyToConnectWithoutValidatingCertificateAndServerName(proxy);
+      return proxy;
+   }
+
+   private void setupProxyToConnectWithoutValidatingCertificateAndServerName(AnnotatedServiceIface proxy)
+   {
+      Client client = ClientProxy.getClient(proxy);
+      HTTPConduit conduit = (HTTPConduit) client.getConduit();
+      TLSClientParameters tcp = new TLSClientParameters();
+      tcp.setDisableCNCheck(true);
+      tcp.setTrustManagers( createTrustManagerNotValidatingCertificateChains() );
+      conduit.setTlsClientParameters( tcp );
    }
 }

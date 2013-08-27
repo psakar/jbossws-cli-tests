@@ -60,11 +60,17 @@ public class CLITestUtils
 
    public void assertServiceIsFunctional(String serviceURL) throws MalformedURLException
    {
+      AnnotatedServiceIface proxy = createServiceProxy(serviceURL);
+      assertEquals(AnnotatedServiceImpl.HELLO_WORLD, proxy.sayHello());
+   }
+
+   protected AnnotatedServiceIface createServiceProxy(String serviceURL) throws MalformedURLException
+   {
       QName serviceName = new QName("http://www.jboss.org/jbossws/ws-extensions/wssecuritypolicy", "AnnotatedSecurityService");
       URL wsdlURL = new URL(serviceURL + "?wsdl");
       Service service = Service.create(wsdlURL, serviceName);
       AnnotatedServiceIface proxy = service.getPort(AnnotatedServiceIface.class);
-      assertEquals(AnnotatedServiceImpl.HELLO_WORLD, proxy.sayHello());
+      return proxy;
    }
 
    public CLIResult executeAssertedCLICommand(String command) throws IOException, CommandLineException {
@@ -169,7 +175,7 @@ public class CLITestUtils
    {
       InputStream stream = null;
       try {
-         url.openStream();
+         stream = url.openStream();
       } catch (ConnectException e) {
          throw new IllegalStateException("Can not read from " + url.toString(), e);
       }
